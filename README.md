@@ -8,3 +8,6 @@ should also compile with Coq 8.6. To compile, type
 
 > make all
 
+This code was developped by [Dominique Larchey-Wendling](http://www.loria.fr/~larchey)
+and is distributed under the CeCILL Free Software License Agreement.
+

@@ -9,7 +9,7 @@
 
 Require Import Arith Omega List.
 
- Require Import list_utils.
+Require Import list_utils.
 
 Set Implicit Arguments.
 
@@ -39,7 +39,7 @@ Section finite_t.
     destruct (Hl _ (or_introl eq_refl)) as (l1 & Hl1).
     destruct IHl as (mm1 & Hmm1).
     intros; apply Hl; right; auto.
-    exists (list_prod cons l1 mm1); intros c.
+    exists (list_prod (@cons _) l1 mm1); intros c.
     rewrite list_prod_spec.
     split.
     intros (y & m & ? & ? & ?); subst; constructor.
@@ -127,7 +127,7 @@ Section finite_t.
   Proof.
     induction m as [ | m (l & Hl) ].
     exists nil; simpl; intros; split; omega.
-    exists (nil::list_prod cons (list_n (S n)) l).
+    exists (nil::list_prod (@cons _) (list_n (S n)) l).
     intros [ | a k ].
     simpl; split; auto; split; auto; omega.
     split.

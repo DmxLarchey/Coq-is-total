@@ -9,7 +9,7 @@
 
 Require Import Arith Max Omega List Relations Wellfounded.
 
-Require Import utils nat_minimizer .
+Require Import utils nat_minimizer finite.
 
 Set Implicit Arguments.
 
@@ -114,6 +114,127 @@ End proof.
 
 Check proof_reif.
 Print Assumptions proof_reif.
+
+Section normal_form.
+
+  Variables (X : Type) (R : X -> X -> Prop).
+  
+  Hypothesis finitary : forall x, finite_t (R x).
+  
+  Definition normal x := forall y, ~ R x y.
+  
+  Local Fact normal_dec x : { normal x } + { ~ normal x }.
+  Proof.
+    destruct (finitary x) as ([ | y l ] & Hl).
+    left; intro; rewrite <- Hl; simpl; tauto.
+    right; intros H; apply (H y), Hl; left; auto.
+  Qed.
+  
+  Local Fixpoint Rn n x y := 
+    match n with
+      | 0   => x = y
+      | S n => exists i, R x i /\ Rn n i y
+    end.
+    
+  Local Fact Rn_plus a b x y : Rn (a+b) x y <-> exists i, Rn a x i /\ Rn b i y.
+  Proof.
+    revert x y; induction a as [ | a IHa ]; intros x y; simpl.
+    split.
+    exists x; simpl; auto.
+    intros (? & [] & ?); auto.
+    split.
+    intros (i & H1 & H2).
+    apply IHa in H2.
+    destruct H2 as (j & H2 & H3).
+    exists j; split; auto.
+    exists i; auto.
+    intros (i & (j & H1 & H2) & H3).
+    exists j; split; auto; apply IHa.
+    exists i; auto.
+  Qed.
+    
+  Local Fact Rn_crt x y : clos_refl_trans _ R x y <-> exists n, Rn n x y.
+  Proof.
+    split.
+    induction 1 as [ x y | | x y z _ (n1 & Hn1) _ (n2 & Hn2) ].
+    exists 1, y; simpl; auto.
+    exists 0; simpl; auto.
+    exists (n1+n2); apply Rn_plus. 
+    exists y; split; auto.
+    intros (n & Hn); revert x y Hn.
+    induction n as [ | n IHn ]; simpl; intros x y Hn.
+    subst; constructor 2.
+    destruct Hn as (i & ? & ?).
+    constructor 3 with i; auto.
+    constructor 1; auto.
+  Qed.
+    
+  Fact Rn_finitary n x : finite_t (Rn n x).
+  Proof.
+    revert x.
+    induction n as [ | n IHn ]; intros x.
+    exists (x::nil); simpl; tauto.
+    apply finite_t_map with (1 := finitary _) (2 := fun x _ => IHn x).
+  Qed.
+  
+  Variable (x : X).
+  
+  Definition normal_form y := normal y /\ clos_refl_trans _ R x y.
+  
+  Let Q n y := normal y /\ Rn n x y.
+  
+  Let Q_dec n : finite_t (Q n).
+  Proof.
+    apply finite_t_dec.
+    apply normal_dec.
+    apply Rn_finitary.
+  Qed.
+  
+  (** This result shows that the predicate "y is a normal form of x"
+     can be refied, ie one can compute a normal form of x out of
+     a proof of its existence ...
+     
+     Hence if x is normalizable then a normal form of x can be
+     computed.
+     
+     The only requirement is that the relation is (informativelly)
+     finitary, that is the set of one step reductions forms a finite list 
+     
+     This development DOES NOT require than the relation is strongly
+     normalizable ... hence the algorithm is obviously not depth
+     first search. In fact, it is exhaustive search for depth 0,
+     then depth 1, then depth 2, etc until a suitable depth is
+     reached. 
+     
+     It is obviously not the best algorithm to actually compute a
+     normal form. This depends on the particular system in consideration.
+
+     This development applies to lambda calculus for instance where 
+     the set of reducts can be computed from the set of redexes 
+     
+  **)
+  
+  Hypothesis Hx : exists y, normal_form y. 
+  
+  Definition normal_form_reif : { y | normal_form y }.
+  Proof.
+    destruct weighted_reif with (P := fun y => exists n, Q n y) (Q := Q)
+      as (y & Hy); auto.
+    simpl; tauto.
+    destruct Hx as (y & ? & Hy).
+    apply Rn_crt in Hy.
+    destruct Hy as (n & ?).
+    exists y, n; split; auto.
+    exists y.
+    destruct Hy as (n & ? & ?); split; auto.
+    apply Rn_crt; exists n; auto.
+  Qed.
+  
+End normal_form.
+
+Check normal_form_reif.
+Print Assumptions normal_form_reif.
+
 
  
   

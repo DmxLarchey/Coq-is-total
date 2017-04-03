@@ -119,8 +119,9 @@ VFILES:=coq_is_total.v\
   recalg.v\
   acc_utils.v\
   tree.v\
-  proof.v\
-  finite.v
+  finite.v\
+  cid.v\
+  applications.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))

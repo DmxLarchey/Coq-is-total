@@ -107,7 +107,6 @@ VFILES:=coq_is_total.v\
   nat_utils.v\
   notations.v\
   pos.v\
-  rel_utils.v\
   tac_utils.v\
   utils.v\
   vec.v\

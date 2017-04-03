@@ -1,4 +1,3 @@
-
 -R . Top
 coq_is_total.v
 list_utils.v
@@ -18,5 +17,6 @@ ra_ca_props.v
 recalg.v
 acc_utils.v
 tree.v
-proof.v
 finite.v
+cid.v
+applications.v

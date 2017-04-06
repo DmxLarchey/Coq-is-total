@@ -9,5 +9,7 @@ should also compile with Coq 8.6. To compile, type
 > make all
 
 This code was developped by [Dominique Larchey-Wendling](http://www.loria.fr/~larchey)
-and is distributed under the CeCILL Free Software License Agreement.
+and is distributed under the CeCILL Free Software License Agreement. It is complementary
+to the paper [*Typing Total Recursive Functions in Coq*](http://www.loria.fr/~larchey) 
+which was submitted to ITP'2017.
 

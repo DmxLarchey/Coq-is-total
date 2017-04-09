@@ -89,7 +89,13 @@ Section inversion_lemmas.
                               /\ f = ra_min g)  
                  .
   Proof.
-    induction 1.
+    induction 1 as [ | | 
+                   | k v j 
+                   | k i f gj v q w p x 
+                   | k f g v n x 
+                   | k f g v n p x q y
+                   | k f v x p w q
+                   ].
     do 0 right; left; split; auto; exists eq_refl; auto.
     do 1 right; left; do 2 (split; auto); exists eq_refl; auto.
     do 2 right; left; split; auto; exists eq_refl; split; simpl; auto.
@@ -106,7 +112,11 @@ Section inversion_lemmas.
 
   (* Automation is our friend here *)
 
-  (* This is to destruct the inversion lemma *)
+  (* This is to destruct the inversion lemma 
+
+     This lemma creates variables which are partly hard coded ...
+     this is not ideal and could be improved
+   *)
      
   Local Ltac myinv := 
     let H := fresh in
@@ -116,10 +126,10 @@ Section inversion_lemmas.
                   | [ (? & ? & ? & ?)
                   | [ (? & ? & ? & ?)
                   | [ (? & ? & ? & ?)
-                  | [ (? & ? & ? & ? & ? & ? & ? & ? & ? & ?) 
-                  | [ (? & ? & ? & ? & ? & ? & ? & ? & ?)
-                  | [ (? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?) 
-                    | (? & ? & ? & ? & ? & ? & ? & ?) 
+                  | [ (? & ? & ? & w' & q' & m' & ? & ? & ? & ?) 
+                  | [ (? & ? & ? & ? & m' & ? & ? & ? & ?)
+                  | [ (? & ? & ? & y' & ? & ? & p' & q' & ? & ? & ? & ? & ?) 
+                    | (? & m' & w' & q' & ? & ? & ? & ?) 
                     ] ] ] ] ] ] ].
 
   Local Ltac natSimpl :=
@@ -155,8 +165,11 @@ Section inversion_lemmas.
     myauto; ra_inj; auto.
   Qed.
   
-  (* These 4 proofs should be a bit improved because they use automatically
-     generated variables and might be a bit unstable when changing Coq version *)
+  (* These 4 proofs use variable names which are hard coded
+     in the tactic myinv ... they should not conflict with
+     other variables names but be warned that this is not 
+     an ideal situation for the stability of those proofs
+   *)
 
   Lemma ra_ca_comp_inv k i f (gj : vec (recalg i) k) v n x : 
      [ra_comp f gj;v] -[n>> x -> exists p w q,
@@ -165,14 +178,14 @@ Section inversion_lemmas.
                                 /\ [f;w] -[p>> x.
   Proof.
     myauto; ra_inj. 
-    exists x4, x3, x5; auto.
+    exists q', w', m'; auto.
   Qed.
   
   Lemma ra_ca_rec_0_inv k f g v n x : 
     [@ra_rec k f g; 0##v] -[n>> x -> exists m, n = S m /\ [f;v] -[m>> x.
   Proof.
     myauto; ra_inj.
-    exists x4; auto.
+    exists m'; auto.
   Qed.
 
   Lemma ra_ca_rec_S_inv k f g v i n x : 
@@ -182,7 +195,7 @@ Section inversion_lemmas.
                                        /\ [g; i##y##v] -[p>> x.
   Proof.
     myauto; ra_inj; natSimpl.
-    exists x3, x7, x6; auto.
+    exists y', q', p'; auto.
   Qed.
 
   Lemma ra_ca_min_inv k f v n x : 
@@ -192,7 +205,7 @@ Section inversion_lemmas.
                               /\ forall j, [f;pos2nat j##v] -[vec_pos q j>> S (@vec_pos _ x w j). 
   Proof.
     myauto; ra_inj.
-    exists x3, x2, x1; auto.
+    exists q', w', m'; auto.
   Qed.
 
 End inversion_lemmas.

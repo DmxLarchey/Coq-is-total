@@ -9,7 +9,8 @@
 
 Require Import Arith Max Omega List Relations Wellfounded.
 
-Require Import utils nat_minimizer finite.
+Require Import utils nat_minimizer finite decidable_t.
+Require Import recalg ra_rel ra_ca ra_sem_eq ra_ca_props.
 
 Set Implicit Arguments.
 
@@ -235,7 +236,167 @@ End normal_form.
 Check normal_form_reif.
 Print Assumptions normal_form_reif.
 
+Section div2.
 
+  (* A small library for a surjection nat -> nat*nat *)
+
+  Fixpoint pow2 x := match x with 0 => 1 | S x => 2 * pow2 x end.
+
+  Fact pow2_ge_1 x : 1 <= pow2 x.
+  Proof. induction x; simpl; omega. Qed.
+
+  Fact pow2_plus a b : pow2 (a+b) = pow2 a * pow2 b.
+  Proof.
+    induction a.
+    simpl; omega.
+    simpl plus.
+    unfold pow2; fold pow2.
+    rewrite <- mult_assoc.
+    f_equal; auto.
+  Qed.
+
+  Fact mult_simpl a b c : 1 <= a -> a*b = a*c -> b = c.
+  Proof.
+    intros H1 H2.
+    destruct a.
+    omega.
+    apply le_antisym; apply mult_S_le_reg_l with a; omega.
+  Qed.
+
+  Fact pow2_simpl a b c : pow2 a*b = pow2 a*c -> b = c.
+  Proof.
+    apply mult_simpl, pow2_ge_1.
+  Qed.
+
+  Let mp a b := (pow2 a)*(1+2*b).
+
+  Fact decomp_ge_1 a b : 1 <= mp a b.
+  Proof.
+    change 1 with (1*1).
+    apply mult_le_compat.
+    apply pow2_ge_1.
+    omega.
+  Qed.
+
+  Fact pow2_odd a b c : pow2 a*b = 1+2*c -> a = 0 /\ b = 1+2*c.
+  Proof.
+    destruct a as [ | a ].
+    simpl; omega.
+    unfold pow2; fold pow2.
+    rewrite <- mult_assoc.
+    omega.
+  Qed.
+
+  Fact decomp_le a b u v : mp a b = mp u v -> a <= u.
+  Proof.
+    unfold mp.
+    intros H.
+    destruct (le_lt_dec a u) as [ | C ]; auto.
+    replace a with (u+(a-u)) in H by omega.
+    rewrite pow2_plus, <- mult_assoc in H. 
+    apply pow2_simpl in H.
+    apply pow2_odd in H.
+    omega.
+  Qed.
  
+  Fact decomp_inj a b u v : mp a b = mp u v -> a = u /\ b = v.
+  Proof.
+    intros H.
+    assert (a = u) as E.
+      apply le_antisym.
+      revert H; apply decomp_le.
+      symmetry in H; revert H; apply decomp_le.
+    split; auto; subst u.
+    unfold mp in H.
+    apply pow2_simpl in H.
+    omega.
+  Qed.
+
+  Definition div2 n : { p | n = 2 * p } + { p | n = 1 + 2 * p }.
+  Proof.
+    induction n as [ n IHn ] using (well_founded_induction_type lt_wf).
+    destruct n as [ | [ | n ] ].
+    left; exists 0; auto.
+    right; exists 0; auto.
+    destruct (IHn n) as [ (p & Hp) | (p & Hp) ].
+    omega.
+    left; exists (S p); omega.
+    right; exists (S p); omega.
+  Qed.
+
+  Definition div_pow2 n : { c | match c with (a,b) => S n = mp a b end }.
+  Proof.
+    induction n as [ n IHn ] using (well_founded_induction_type lt_wf).
+    destruct n as [ | n ].
+    exists (0,0); auto. 
+    destruct (div2 n) as [ (p & Hp) | (p & Hp) ].
+    destruct (IHn p) as ((a,b) & H).
+    omega.
+    exists (S a, b).
+    replace (S (S n)) with (2*S p) by omega.
+    rewrite H; unfold mp; rewrite mult_assoc; auto.
+    unfold mp; exists (0,S p); simpl; omega.
+  Qed.
+
+End div2.
+
+Section re_min.
+
+  Let e (c : nat * nat) : nat := match c with (a,b) => (pow2 a)*(1+2*b)-1 end.
+  Let d n := proj1_sig (div_pow2 n).
+
+  Let Hd x : d (e x) = x.
+  Proof.
+    unfold d.
+    destruct (div_pow2 (e x)) as ((a,b) & H); simpl.
+    destruct x as (u,v); unfold e in H.
+    replace (S (pow2 u*(1+2*v)-1)) with (pow2 u*(1+2*v)) in H.
+    apply decomp_inj in H.
+    destruct H; subst; auto.
+    generalize (decomp_ge_1 u v); omega.
+  Qed.
+ 
+  Variables (f : recalg 1).
+
+  Let Q n := match d n with (x,n) => [ f ; x##vec_nil ] -[n>> 0 end.
+
+  Let Qdec : forall x, { Q x } + { ~ Q x }.
+  Proof.
+    intros x.
+    unfold Q.
+    destruct (d x) as (a,n).
+    clear x.
+    destruct (ra_ca_decidable_t f (a##vec_nil) n) as [ ([ | u ] & Hu) | H ].
+    left; auto.
+    right; intros C.
+    discriminate (proj2 (ra_ca_fun Hu C)).
+    right; contradict H; exists 0; auto.
+  Qed.
+
+  Hypothesis HP : exists x, [|f|] (x##vec_nil) 0.
+
+  Let HQ : exists x, Q x.
+  Proof.
+    destruct HP as (x & Hx).
+    apply ra_ca_correct in Hx.
+    destruct Hx as (n & Hn).
+    exists (e (x,n)); red.
+    rewrite Hd; auto.
+  Qed.
+
+  Theorem re_reify : { x | [|f|] (x##vec_nil) 0 }.
+  Proof.
+    destruct (nat_reify _ Qdec HQ) as (x & Hx).
+    red in Hx.
+    destruct (d x) as (y & n).
+    exists y.
+    apply ra_ca_correct.
+    exists n; auto.
+  Qed.
+
+End re_min.
+ 
+Check re_reify.
+Print Assumptions re_reify.
   
   

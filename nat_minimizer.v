@@ -61,6 +61,24 @@ Section nat_reify.
     apply (@Acc_R_zero x), P_Acc_R, Hx.
   Qed.
   
+  Let Acc_exists_eq x : Acc R x <-> exists i, x <= i /\ P i.
+  Proof.
+    split.
+    induction 1 as [ x Hx IHx ].
+    destruct (HP x).
+    exists x; split; auto.
+    destruct (IHx (S x)) as (i & ? & ?).
+    split; auto.
+    exists i; split; auto; omega.
+    
+    intros (i & H1 & H2).
+    apply P_Acc_R in H2.
+    revert H2.
+    replace i with ((i-x)+x) by omega.
+    generalize (i-x); clear i H1; intros i.
+    induction i; auto.
+  Qed.
+  
   (* Same as nat_reif but we show that the computed value
      is the minimum *)
      

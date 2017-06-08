@@ -44,8 +44,8 @@ End loop.
 
 Extraction "loop.ml" loop undefined.
 
-(** The extraction results the following non terminating
-    functions 
+(** The extraction results in the following obviously
+    non terminating functions 
 
 (** val loop : 'a1 -> 'a2 **)
 

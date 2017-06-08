@@ -340,9 +340,10 @@ Section div2.
 
 End div2.
 
-Section re_min.
+Section vec_enum.
 
   Let e (c : nat * nat) : nat := match c with (a,b) => (pow2 a)*(1+2*b)-1 end.
+  
   Let d n := proj1_sig (div_pow2 n).
 
   Let Hd x : d (e x) = x.
@@ -355,43 +356,69 @@ Section re_min.
     destruct H; subst; auto.
     generalize (decomp_ge_1 u v); omega.
   Qed.
- 
-  Variables (f : recalg 1).
+  
+  Opaque e.
+  
+  Fixpoint vec_enc k : vec nat k -> nat :=
+    match k with
+      | 0   => fun _ => 0
+      | S k => fun v => e (vec_head v,vec_enc (vec_tail v))
+    end.
+    
+  Fixpoint vec_dec k : nat -> vec nat k :=
+    match k with 
+      | 0   => fun _ => vec_nil
+      | S k => fun n => let (a,b) := d n in a##vec_dec k b 
+    end.
+    
+  Fact vec_dec_enc k x : vec_dec k (vec_enc x) = x.
+  Proof.
+    revert x; induction k as [ | k IHk ]; intros x.
+    rewrite vec_0_nil; auto.
+    rewrite (vec_head_tail x).
+    generalize (vec_head x) (vec_tail x); clear x; intros a v.
+    simpl; rewrite Hd, IHk; auto.
+  Qed.
+  
+End vec_enum.
 
-  Let Q n := match d n with (x,n) => [ f ; x##vec_nil ] -[n>> 0 end.
+Section re_min.
+ 
+  Variables (k : nat) (f : recalg k).
+
+  Let Q n := let v := vec_dec (S k) n in [ f ; vec_tail v ] -[vec_head v>> 0.
 
   Let Qdec : forall x, { Q x } + { ~ Q x }.
   Proof.
     intros x.
     unfold Q.
-    destruct (d x) as (a,n).
-    clear x.
-    destruct (ra_ca_decidable_t f (a##vec_nil) n) as [ ([ | u ] & Hu) | H ].
+    generalize (vec_head (vec_dec (S k) x)) (vec_tail (vec_dec (S k) x)).
+    clear x; intros n v.
+    destruct (ra_ca_decidable_t f v n) as [ ([ | u ] & Hu) | H ].
     left; auto.
     right; intros C.
     discriminate (proj2 (ra_ca_fun Hu C)).
     right; contradict H; exists 0; auto.
   Qed.
 
-  Hypothesis HP : exists x, [|f|] (x##vec_nil) 0.
+  Hypothesis HP : exists v, [|f|] v 0.
 
   Let HQ : exists x, Q x.
   Proof.
-    destruct HP as (x & Hx).
-    apply ra_ca_correct in Hx.
-    destruct Hx as (n & Hn).
-    exists (e (x,n)); red.
-    rewrite Hd; auto.
+    destruct HP as (v & Hv).
+    apply ra_ca_correct in Hv.
+    destruct Hv as (n & Hn).
+    exists (vec_enc (n##v)); red.
+    rewrite vec_dec_enc; auto.
   Qed.
 
-  Theorem re_reify : { x | [|f|] (x##vec_nil) 0 }.
+  Theorem re_reify : { v | [|f|] v 0 }.
   Proof.
     destruct (nat_reify _ Qdec HQ) as (x & Hx).
     red in Hx.
-    destruct (d x) as (y & n).
-    exists y.
+    exists (vec_tail (vec_dec (S k) x)).
     apply ra_ca_correct.
-    exists n; auto.
+    exists (vec_head (vec_dec (S k) x)); auto.
   Qed.
 
 End re_min.

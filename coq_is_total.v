@@ -26,12 +26,18 @@ Section Coq_is_total.
     exists n; exists; exists x; trivial.
   Qed.
   
-  Theorem Coq_is_total : { cf | forall v, [|f|] v (cf v) }.
+  Let cf v := proj1_sig (projT2 (coq_f v)).
+  
+  Let Hcf v : [|f|] v (cf v).
   Proof.
-    exists (fun v => proj1_sig (projT2 (coq_f v))).
-    intros v; apply ra_ca_correct.
+    apply ra_ca_correct.
     exists (projT1 (coq_f v)).
     apply (proj2_sig (projT2 (coq_f v))).
+  Qed.
+  
+  Theorem Coq_is_total : { cf | forall v, [|f|] v (cf v) }.
+  Proof.
+    exists cf; auto.
   Qed.
 
 End Coq_is_total.

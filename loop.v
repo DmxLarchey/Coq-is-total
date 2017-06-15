@@ -17,35 +17,52 @@
     for some given set of axioms, or even, provided that those axioms
     are 1-consistent (have a model), but I am not sure.
     
-    The proofs of strong normalization or normalization that I have 
-    heard of work for subsets of Coq which do not include axioms 
+    For the proofs of strong normalization or normalization that I have 
+    heard of (such as Mellies and Werner's), these proofs work for 
+    subsets of Coq which do not include axioms even if only in Prop. 
     
 **)
 
-Axioms F : False.
+Require Import Wf.
 
-Section loop.
+Definition forget (n : nat) := 0.
+Fixpoint nat_loop (n : nat) := forget (nat_loop n).
 
-  Variable X Y : Type.
+Fixpoint loop X Y x (H : Acc (@eq X) x) : Y := 
+  loop _ Y _ (match H with Acc_intro _ H => H x eq_refl end).
 
-  Fixpoint loop (x : X) (Hx : Acc (fun _ _ => True) x) { struct Hx } : Y.
-  Proof.
-    refine (loop x _).
-    destruct Hx as [ Hx ].
-    apply Hx; trivial.
-  Defined.
-  
-  Definition undefined : X -> Y.
-  Proof.
-    intros x; apply (loop x); destruct F.
-  Defined.
-  
-End loop.
 
-Extraction "loop.ml" loop undefined.
+Definition undefined : False -> forall X, X.
+Proof.
+  intros H X.
+  apply (loop _ _ tt).
+  destruct H.
+Defined.
 
-(** The extraction results in the following obviously
-    non terminating functions 
+Extraction "loop.ml" nat_loop loop undefined.
+
+(** 
+
+---> The extraction results in the following 
+
+(** val forget : nat -> nat **)
+
+let forget _ =
+  O
+
+(** val nat_loop : nat -> nat **)
+
+let rec nat_loop n =
+  forget (nat_loop n)
+
+---> Obviously nat_loop is only normalizing
+     but not strongly normalizing
+
+---> Propositional guards that ensure the
+     termination of function are erased at
+     extraction and a function like loop
+     is extracted into a non-terminating 
+     term 
 
 (** val loop : 'a1 -> 'a2 **)
 
@@ -56,5 +73,10 @@ let rec loop x =
 
 let undefined x =
   loop x
+
+---> Hence is the set of Prop-level axioms
+     chosen is inconsistent (can derive False)
+     then, we can built a non-terminating 
+     term within Coq
 
 *)

@@ -74,7 +74,7 @@ let rec loop x =
 let undefined x =
   loop x
 
----> Hence is the set of Prop-level axioms
+---> Hence if the set of Prop-level axioms
      chosen is inconsistent (can derive False)
      then, we can built a non-terminating 
      term within Coq

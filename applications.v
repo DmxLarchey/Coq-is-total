@@ -340,35 +340,38 @@ Section div2.
 
 End div2.
 
-Section vec_enum.
+Section pairing.
 
-  Let e (c : nat * nat) : nat := match c with (a,b) => (pow2 a)*(1+2*b)-1 end.
+  Definition pair_nat (c : nat * nat) : nat := match c with (a,b) => (pow2 a)*(1+2*b)-1 end.
+  Definition nat_pair n := proj1_sig (div_pow2 n).
   
-  Let d n := proj1_sig (div_pow2 n).
-
-  Let Hd x : d (e x) = x.
+  Fact nat_pair_nat c : nat_pair (pair_nat c) = c.
   Proof.
-    unfold d.
-    destruct (div_pow2 (e x)) as ((a,b) & H); simpl.
-    destruct x as (u,v); unfold e in H.
+    unfold nat_pair.
+    destruct (div_pow2 (pair_nat c)) as ((a,b) & H); simpl.
+    destruct c as (u,v); unfold pair_nat in H.
     replace (S (pow2 u*(1+2*v)-1)) with (pow2 u*(1+2*v)) in H.
     apply decomp_inj in H.
     destruct H; subst; auto.
     generalize (decomp_ge_1 u v); omega.
   Qed.
   
-  Opaque e.
+End pairing.
+
+Section vec_enum.
+  
+  Opaque pair_nat.
   
   Fixpoint vec_enc k : vec nat k -> nat :=
     match k with
       | 0   => fun _ => 0
-      | S k => fun v => e (vec_head v,vec_enc (vec_tail v))
+      | S k => fun v => pair_nat (vec_head v,vec_enc (vec_tail v))
     end.
     
   Fixpoint vec_dec k : nat -> vec nat k :=
     match k with 
       | 0   => fun _ => vec_nil
-      | S k => fun n => let (a,b) := d n in a##vec_dec k b 
+      | S k => fun n => let (a,b) := nat_pair n in a##vec_dec k b 
     end.
     
   Fact vec_dec_enc k x : vec_dec k (vec_enc x) = x.
@@ -377,7 +380,7 @@ Section vec_enum.
     rewrite vec_0_nil; auto.
     rewrite (vec_head_tail x).
     generalize (vec_head x) (vec_tail x); clear x; intros a v.
-    simpl; rewrite Hd, IHk; auto.
+    simpl; rewrite nat_pair_nat, IHk; auto.
   Qed.
   
 End vec_enum.
@@ -425,5 +428,44 @@ End re_min.
  
 Check re_reify.
 Print Assumptions re_reify.
+
+Section cre_reify.
+
+  (* Reification of Coq-recursively enumerable predicates *)
+
+  Variable (P : nat -> nat -> Prop).
+  
+  (* We reify the predicate (n => exists e, P n e)
+     where P is decidable, is this what reviewer 2
+     calls recursively enumerable predicate (in Coq)
+   *)
+  
+  Hypothesis (Pdec : forall n e, { P n e } + { ~ P n e }). 
+  Hypothesis (HP : exists n e, P n e).
+  
+  Let Q n := let (a,b) := nat_pair n in P a b.
+  
+  Let HQ n : { Q n } + { ~ Q n }.
+  Proof.
+    unfold Q.
+    generalize (nat_pair n).
+    intros []. 
+    apply Pdec.
+  Qed.
+  
+  Theorem cre_reify : { n : nat & { e | P n e } }.
+  Proof.
+    destruct (nat_reify _ HQ) as (n & Hn).
+    destruct HP as (n & a & H).
+    exists (pair_nat (n,a)).
+    red; rewrite nat_pair_nat; trivial.
+    red in Hn.
+    destruct (nat_pair n) as (a,b).
+    exists a, b; trivial.
+  Qed.
+  
+End cre_reify.
+
+Check cre_reify.
   
   

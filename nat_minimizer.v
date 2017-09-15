@@ -128,10 +128,10 @@ Section nat_reify.
      
   Let Acc_P_min : forall x (Hx : Acc R x), { m | P m /\ forall y, P y -> y < x \/ m <= y }.
   Proof.
-    refine (fix loop x Hx { struct Hx } := 
+    refine (fix Acc_P_min x Hx { struct Hx } := 
       match HP x with 
         | left T  => exist _ x _
-        | right F => match loop (S x) _ with exist _ m (conj H1 H2) => exist _ m _ end
+        | right F => match Acc_P_min (S x) _ with exist _ m H => exist _ m _ end
       end).
       
     split; trivial.
@@ -140,13 +140,13 @@ Section nat_reify.
     destruct Hx as [ Hx ].
     apply Hx; red; auto.
     
-    clear loop.  (* we do not want the automatic tactics to use that one *)
-    split; auto.
-    intros y Hy; destruct (H2 _ Hy).
+    clear Acc_P_min.  (* we do not want the automatic tactics to use that one *)
+    destruct H as [ H1 H2 ].
+    split; trivial.
+    intros y Hy.
     destruct (eq_nat_dec x y) as [ | ].
-    subst; contradict Hy; auto.
-    omega.
-    omega.
+    subst; contradict F; trivial.
+    specialize (H2 _ Hy); omega.
   Qed.
   
   Print Acc_P_min.
@@ -160,7 +160,7 @@ Section nat_reify.
     apply Acc_R_zero with x, P_Acc_R, Hx.
     
     exists m; split; auto.
-    intros y Hy; specialize (H2 _ Hy); omega.
+    intros ? Hy; specialize (H2 _ Hy); omega.
   Qed.
   
 End nat_reify.

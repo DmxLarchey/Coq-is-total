@@ -42,7 +42,7 @@ Section nat_reify.
   Proof.
     induction x; auto.
   Qed.
-  
+
   Let Acc_exists_eq x : Acc R x <-> exists i, x <= i /\ P i.
   Proof.
     split.
@@ -233,4 +233,5 @@ End functional_countable_decidable_choice.
 
 Check FunctionalCountableDecidableChoice.
 
-  
+Extraction "minimize.ml" nat_reify nat_minimizer nat_reify_t.
+

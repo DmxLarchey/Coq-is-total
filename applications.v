@@ -385,66 +385,22 @@ Section vec_enum.
   
 End vec_enum.
 
-Section re_min.
- 
-  Variables (k : nat) (f : recalg k).
-
-  Let Q n := let v := vec_dec (S k) n in [ f ; vec_tail v ] -[vec_head v>> 0.
-
-  Let Qdec : forall x, { Q x } + { ~ Q x }.
-  Proof.
-    intros x.
-    unfold Q.
-    generalize (vec_head (vec_dec (S k) x)) (vec_tail (vec_dec (S k) x)).
-    clear x; intros n v.
-    destruct (ra_ca_decidable_t f v n) as [ ([ | u ] & Hu) | H ].
-    left; auto.
-    right; intros C.
-    discriminate (proj2 (ra_ca_fun Hu C)).
-    right; contradict H; exists 0; auto.
-  Qed.
-
-  Hypothesis HP : exists v, [|f|] v 0.
-
-  Let HQ : exists x, Q x.
-  Proof.
-    destruct HP as (v & Hv).
-    apply ra_ca_correct in Hv.
-    destruct Hv as (n & Hn).
-    exists (vec_enc (n##v)); red.
-    rewrite vec_dec_enc; auto.
-  Qed.
-
-  Theorem re_reify : { v | [|f|] v 0 }.
-  Proof.
-    destruct (nat_reify _ Qdec HQ) as (x & Hx).
-    red in Hx.
-    exists (vec_tail (vec_dec (S k) x)).
-    apply ra_ca_correct.
-    exists (vec_head (vec_dec (S k) x)); auto.
-  Qed.
-
-End re_min.
- 
-Check re_reify.
-Print Assumptions re_reify.
-
 Section cre_reify.
 
   (* Reification of Coq-recursively enumerable predicates *)
 
-  Variable (P : nat -> nat -> Prop).
+  Variables (k : nat) (P : vec nat k -> nat -> Prop).
   
   (* We reify the predicate (n => exists e, P n e)
      where P is decidable, is this what reviewer 2
      calls recursively enumerable predicate (in Coq)
    *)
   
-  Hypothesis (Pdec : forall n e, { P n e } + { ~ P n e }). 
-  Hypothesis (HP : exists n e, P n e).
-  
-  Let Q n := let (a,b) := nat_pair n in P a b.
-  
+  Hypothesis (Pdec : forall v e, { P v e } + { ~ P v e }). 
+  Hypothesis (HP : exists v e, P v e).
+
+  Let Q n := let (a,b) := nat_pair n in P (vec_dec k a) b.
+
   Let HQ n : { Q n } + { ~ Q n }.
   Proof.
     unfold Q.
@@ -453,19 +409,55 @@ Section cre_reify.
     apply Pdec.
   Qed.
   
-  Theorem cre_reify : { n : nat & { e | P n e } }.
+  Theorem cre_reify_full : { v : vec nat k & { e | P v e } }.
   Proof.
     destruct (nat_reify _ HQ) as (n & Hn).
-    destruct HP as (n & a & H).
-    exists (pair_nat (n,a)).
-    red; rewrite nat_pair_nat; trivial.
+    destruct HP as (v & a & H).
+    exists (pair_nat (vec_enc v,a)).
+    red; rewrite nat_pair_nat, vec_dec_enc; trivial.
     red in Hn.
     destruct (nat_pair n) as (a,b).
-    exists a, b; trivial.
+    exists (vec_dec k a), b; trivial.
+  Qed.
+  
+  Theorem cre_reify : { v : vec nat k | exists e, P v e }.
+  Proof.
+    destruct cre_reify_full as (v & e & H).
+    exists v, e; trivial.
   Qed.
   
 End cre_reify.
 
+Section re_min.
+ 
+  Variables (k : nat) (f : recalg k).
+  
+  Lemma ra_ca_dec v n x : { [f;v] -[n>> x } + { ~ [f;v] -[n>> x }.
+  Proof.
+    destruct ra_ca_decidable_t with (f := f) (v := v) (n := n)
+      as [ (r & Hr) | C ].
+    destruct (eq_nat_dec r x) as [ E | C ].
+    subst; left; auto.
+    right; contradict C; apply (ra_ca_fun Hr C).
+    right; intros H; apply C; exists x; trivial.
+  Qed.
+  
+  Theorem re_reify : (exists v, [|f|] v 0) -> { v | [|f|] v 0 }.
+  Proof.
+    intros H.
+    destruct cre_reify with (P := fun v x => [f;v] -[x>> 0)
+      as (v & Hv); trivial.
+    intros; apply ra_ca_dec.
+    destruct H as (v & Hv); exists v; apply ra_rel_inc_ca; trivial.
+    exists v; apply ra_bs_inc_rel, ra_ca_inc_bs; trivial.
+  Qed.
+
+End re_min.
+ 
 Check cre_reify.
+Check re_reify.
+Print Assumptions re_reify.
+
+
   
   

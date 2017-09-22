@@ -484,6 +484,8 @@ Require Import Bool.
 
 Definition re {X : Type} (P : X -> Prop) := { f : X -> nat -> bool | forall x, P x <-> exists n, f x n = true }.
 
+(* Of course, this is a more general definition than with "real" recursive functions *)
+
 Lemma re_ra k (f : recalg k) : re (fun v => [|f|] v 0).
 Proof.
   destruct (ra_as_ex_bool f) as (c & Hc).

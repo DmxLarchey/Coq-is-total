@@ -482,6 +482,36 @@ Print Assumptions re_reify.
 
 Require Import Bool.
 
+Definition re_prop (A : Prop) := { f : nat -> bool | A <-> exists n, f n = true }.
+
+Fact re_prop_dec (A B : Prop) : re_prop A -> re_prop B -> A \/ B -> { A } + { B }.
+Proof.
+  intros (a & Ha) (b & Hb) H.
+  set (c n := let (c,m) := nat_pair n in c = 0 /\ a m = true \/ c <> 0 /\ b m = true).
+  destruct nat_reify with (P := c) as (n & Hn).
+  
+  intros n; unfold c.
+  destruct (nat_pair n) as (u,v).
+  destruct (eq_nat_dec u 0); 
+  destruct (bool_dec (a v) true ); destruct (bool_dec (b v) true); tauto.
+  
+  destruct H as [ H | H ];
+    [ apply Ha in H | apply Hb in H ];
+    destruct H as (n & H);   
+    [ exists (pair_nat (0,n)) | exists (pair_nat (1,n)) ];
+    red; rewrite nat_pair_nat; auto.
+    
+  unfold c in Hn.
+  destruct (nat_pair n) as ([ | u],v).
+  left.
+  destruct Hn as [ (_,Hn) | (Hn,_) ].
+  apply Ha; exists v; auto.
+  destruct Hn; auto.
+  right.
+  destruct Hn as [ (Hn,_) | (_,Hn) ].
+  discriminate.
+  apply Hb; exists v; auto.
+Qed.
 
 Definition dec {X : Type} (P : X -> Prop) := { f : X -> bool | forall x, P x <-> f x = true }.
 Definition re {X : Type} (P : X -> Prop) := { f : X -> nat -> bool | forall x, P x <-> exists n, f x n = true }.

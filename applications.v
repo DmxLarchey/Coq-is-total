@@ -385,6 +385,34 @@ Section vec_enum.
   
 End vec_enum.
 
+Section ex_bool_reify.
+
+  Variable (k : nat) (f : vec nat k -> nat -> bool).
+  Hypothesis (Hf : exists v, exists n, f v n = true).
+  
+  Let Q n := let (a,b) := nat_pair n in f (vec_dec k a) b = true.
+
+  Let HQ n : { Q n } + { ~ Q n }.
+  Proof.
+    unfold Q.
+    generalize (nat_pair n).
+    intros (a, b).
+    destruct (f (vec_dec k a) b); auto.
+  Qed.
+  
+  Theorem ex_bool_reify : { v : vec nat k & { n | f v n = true } }.
+  Proof.
+    destruct (nat_reify _ HQ) as (n & Hn).
+    destruct Hf as (v & n & H).
+    exists (pair_nat (vec_enc v,n)).
+    red; rewrite nat_pair_nat, vec_dec_enc; trivial.
+    red in Hn.
+    destruct (nat_pair n) as (a,b).
+    exists (vec_dec k a), b; trivial.
+  Qed.
+  
+End ex_bool_reify.
+  
 Section cre_reify.
 
   (* Reification of Coq-recursively enumerable predicates *)
@@ -398,32 +426,16 @@ Section cre_reify.
   
   Hypothesis (Pdec : forall v e, { P v e } + { ~ P v e }). 
   Hypothesis (HP : exists v e, P v e).
-
-  Let Q n := let (a,b) := nat_pair n in P (vec_dec k a) b.
-
-  Let HQ n : { Q n } + { ~ Q n }.
-  Proof.
-    unfold Q.
-    generalize (nat_pair n).
-    intros []. 
-    apply Pdec.
-  Qed.
-  
-  Theorem cre_reify_full : { v : vec nat k & { e | P v e } }.
-  Proof.
-    destruct (nat_reify _ HQ) as (n & Hn).
-    destruct HP as (v & a & H).
-    exists (pair_nat (vec_enc v,a)).
-    red; rewrite nat_pair_nat, vec_dec_enc; trivial.
-    red in Hn.
-    destruct (nat_pair n) as (a,b).
-    exists (vec_dec k a), b; trivial.
-  Qed.
   
   Theorem cre_reify : { v : vec nat k | exists e, P v e }.
   Proof.
-    destruct cre_reify_full as (v & e & H).
-    exists v, e; trivial.
+    destruct ex_bool_reify with (f := fun v n => if Pdec v n then true else false) 
+      as (v & n & H).
+    destruct HP as (v & n & H).
+    exists v, n.
+    destruct (Pdec v n); tauto.
+    exists v, n.
+    destruct (Pdec v n); auto; discriminate.
   Qed.
   
 End cre_reify.
@@ -442,6 +454,14 @@ Section re_min.
     right; intros H; apply C; exists x; trivial.
   Qed.
   
+  Lemma ra_as_ex_bool : { c : vec nat k -> nat -> nat -> bool | forall v x, [|f|] v x <-> exists n, c v x n = true }.
+  Proof.
+    exists (fun v x n => if ra_ca_dec v n x then true else false).
+    intros v x; rewrite ra_ca_correct.
+    split; intros (n & Hn); exists n;
+      destruct (ra_ca_dec v n x); auto; discriminate.
+  Qed.
+  
   Theorem re_reify : (exists v, [|f|] v 0) -> { v | [|f|] v 0 }.
   Proof.
     intros H.
@@ -458,6 +478,86 @@ Check cre_reify.
 Check re_reify.
 Print Assumptions re_reify.
 
+(* Recursively enumerable types are stable under finite/enumerable unions and finite intersection *)
 
+Require Import Bool.
+
+Definition re {X : Type} (P : X -> Prop) := { f : X -> nat -> bool | forall x, P x <-> exists n, f x n = true }.
+
+Lemma re_ra k (f : recalg k) : re (fun v => [|f|] v 0).
+Proof.
+  destruct (ra_as_ex_bool f) as (c & Hc).
+  exists (fun v => c v 0).
+  intro; apply Hc.
+Qed.
+
+Fact re_empty X : re (fun _ : X => False).
+Proof.
+  exists (fun _ _ => false); intros x; split.
+  intros [].
+  intros (_ & ?); discriminate.
+Qed.
+
+Fact re_cup X (P Q : X -> Prop) : re P -> re Q -> re (fun x => P x \/ Q x).
+Proof.
+  intros (p & Hp) (q & Hq).
+  exists (fun x n => orb (p x n) (q x n)).
+  intros x; split.
+  intros [ H | H ]; [ apply Hp in H | apply Hq in H ];
+    destruct H as (n & Hn); exists n; apply orb_true_iff; tauto.
+  intros (n & Hn); apply orb_true_iff in Hn.
+  destruct Hn as [ Hn | Hn ]; [ left; apply Hp | right; apply Hq ];
+    exists n; auto.
+Qed.
+
+Fact re_icup X (P : nat -> X -> Prop) : (forall n, re (P n)) -> re (fun x => exists n, P n x).
+Proof.
+  intros HP.
+  exists (fun x c => let (a,b) := nat_pair c in proj1_sig (HP a) x b).
+  intros x; split.
+  intros (a & Ha).
+  apply (proj2_sig (HP a)) in Ha.
+  destruct Ha as (b & Hn).
+  exists (pair_nat (a,b)); rewrite nat_pair_nat; auto.
+  intros (n & Hn); revert Hn; generalize (nat_pair n); clear n; intros (a,b).
+  intro; exists a; apply (proj2_sig (HP a)); exists b; auto.
+Qed.
+
+Fact re_full X : re (fun _ : X => True).
+Proof.
+  exists (fun _ _ => true); intros x; split.
+  exists 0; auto.
+  auto.
+Qed.
+
+Fact re_cap X (P Q : X -> Prop) : re P -> re Q -> re (fun x => P x /\ Q x).
+Proof.
+  intros (p & Hp) (q & Hq).
+  exists (fun x c => let (a,b) := nat_pair c in andb (p x a) (q x b)).
+  intros x; split.
+  
+  intros (HP & HQ).
+  rewrite Hp in HP; rewrite Hq in HQ.
+  destruct HP as (a & Ha).
+  destruct HQ as (b & Hb).
+  exists (pair_nat (a,b)).
+  rewrite nat_pair_nat.
+  apply andb_true_iff; tauto.
+  
+  intros (n & Hn).
+  destruct (nat_pair n) as (a,b).
+  apply andb_true_iff in Hn.
+  rewrite Hp, Hq; split.
+  exists a; tauto.
+  exists b; tauto.
+Qed.
+
+(* re is probably not stable under infinite intersections 
+   give an example ... *)
+
+
+
+  
+  
   
   

@@ -482,7 +482,28 @@ Print Assumptions re_reify.
 
 Require Import Bool.
 
+
+Definition dec {X : Type} (P : X -> Prop) := { f : X -> bool | forall x, P x <-> f x = true }.
 Definition re {X : Type} (P : X -> Prop) := { f : X -> nat -> bool | forall x, P x <-> exists n, f x n = true }.
+
+Fact dec_decidable X P : @dec X P -> forall x, { P x } + { ~ P x }.
+Proof.
+  intros (f & Hf) x.
+  specialize (Hf x).
+  destruct (f x).
+  left; apply Hf; auto.
+  right; rewrite Hf; discriminate.
+Qed.
+
+Fact dec_re X (P : X -> Prop) : dec P -> re P.
+Proof.
+  intros (f & Hf).
+  exists (fun v _ => f v).
+  intros x; rewrite Hf.
+  split.
+  exists 0; auto.
+  intros (_ & ?); auto.
+Qed.
 
 (* Of course, this is a more general definition than with "real" recursive functions *)
 
@@ -557,9 +578,45 @@ Qed.
 (* re is probably not stable under infinite intersections 
    give an example ... *)
 
-
-
+Fact re_dec X (P : X -> Prop) : re P -> re (fun x => ~ P x) -> (forall x, P x \/ ~ P x) -> dec P.
+Proof.
+  intros (f & Hf) (g & Hg) HP.
+  set (h x n := let (c,m) := nat_pair n in c = 0 /\ f x m = true \/ c <> 0 /\ g x m = true). 
+  assert (forall x, exists n, h x n) as Hh.
+    intros x.
+    destruct (HP x) as [ H | H ].
+    apply Hf in H.
+    destruct H as (a & Ha).
+    exists (pair_nat (0,a)); unfold h.
+    rewrite nat_pair_nat; auto.
+    apply Hg in H.
+    destruct H as (b & Hb).
+    exists (pair_nat (1,b)); unfold h.
+    rewrite nat_pair_nat; auto.
+  assert (forall x n, { h x n } + { ~ h x n }) as hdec.
+    intros x n; unfold h.
+    generalize (nat_pair n); clear n; intros (c,n).
+    generalize (eq_nat_dec c 0) (bool_dec (f x n) true) (bool_dec (g x n) true); tauto.
+  set (c x := nat_reify (h x) (hdec x) (Hh x)).
+  generalize c; clear c Hh hdec; unfold h; intros c.
+  exists (fun x => let n := proj1_sig (c x) in let (a,b) := nat_pair n in if eq_nat_dec a 0 then true else false).
+  intros x; split.
   
+  intros Hx.
+  destruct (c x) as (n & Hn); simpl.
+  destruct (nat_pair n) as (a,m); simpl.
+  destruct Hn as [ [ ? ? ] | [ _ Hn ] ].
+  destruct (eq_nat_dec a 0); auto.
+  exfalso; revert Hx; apply Hg; exists m; auto.
+  
+  destruct (c x) as (n & Hn); simpl.
+  destruct (nat_pair n) as (a & b).
+  destruct (eq_nat_dec a 0) as [ Ha | Ha ].
+  intros _; apply Hf; exists b; tauto.
+  discriminate.
+Qed.
+
+
   
   
   

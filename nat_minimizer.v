@@ -13,6 +13,20 @@ Require Import decidable_t.
 
 Set Implicit Arguments.
 
+(** Thanks to a remark of Yannick Forster at ITP 2017,
+    it seems that I rediscovered a result of Coq's 
+    standard library (Constructive Epsilon), with
+    similar proofs (although a bit different in 
+    presentation).
+   
+    I have to add that the ad-hoc inductive predicate 
+    "before_witness" which is defined in Section 
+    
+      ConstructiveIndefiniteGroundDescription_Direct
+   
+    is in fact a restricted form of Bar inductive predicate 
+ *)
+
 Section nat_reify.
 
   (** This is UNBOUNDED minimization when a certificate of termination

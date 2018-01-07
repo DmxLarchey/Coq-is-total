@@ -121,7 +121,9 @@ VFILES:=coq_is_total.v\
   tree.v\
   finite.v\
   cid.v\
-  applications.v
+  applications.v\
+  minimizer.v\
+  recursor.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))

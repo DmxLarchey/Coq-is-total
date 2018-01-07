@@ -42,3 +42,5 @@ Inductive ra_bs : forall k, recalg k -> vec nat k -> nat -> Prop :=
 where " [ f ; v ] ~~> x " := (@ra_bs _ f v x).
 
 
+
+

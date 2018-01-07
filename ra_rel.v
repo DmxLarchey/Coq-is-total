@@ -10,6 +10,7 @@
 Require Import Arith Omega.
 
 Require Import utils recalg.
+Require Import recursor minimizer.
 
 Set Implicit Arguments.
 
@@ -41,15 +42,17 @@ Section relational_semantics.
                                     and xn = x 
     **)
 
+(*
     Fixpoint s_rec_r f h n v x := 
       match n with
         | 0   => f v x
         | S n => exists y, s_rec_r f h n v y /\ h (n##y##v) x
       end.
-      
-    Definition s_rec  f h v := s_rec_r  f h (vec_head v) (vec_tail v).
+*)
+   
+    Definition s_rec f h v := recursor (f (vec_tail v)) (fun x y => h (x##y##vec_tail v)) (vec_head v).
 
-    Definition s_min g v x := g (x##v) 0 /\ forall y, y<x -> exists r, g (y##v) (S r).
+    Definition s_min g v := minimizer (fun n => g (n##v)).
 
   End defs.
   
@@ -116,28 +119,16 @@ Section relational_semantics.
       intros p; apply (gj_fun p v); auto.
     Qed.
 
-    Lemma s_rec_r_fun f h n : functional f -> functional h -> functional (s_rec_r f h n). 
-    Proof.
-      intros f_fun h_fun.
-      induction n; intros v x y Hx Hy; simpl in Hx, Hy. 
-      apply (@f_fun v); trivial.
-      destruct Hx as [ x' [ Hx Hx' ] ].
-      destruct Hy as [ y' [ Hy Hy' ] ].
-      rewrite -> (IHn _ _ _ Hx Hy) in Hx'.
-      apply h_fun with (1 := Hx'); trivial.
-    Qed.
-
     Lemma s_rec_fun f h : functional f -> functional h -> functional (s_rec f h).
     Proof.
-      intros ? ? ? ? ?; apply s_rec_r_fun; auto.
+      intros Hf Hh ? ? ? ?; unfold s_rec; apply recursor_fun; auto;
+        intros ? ?; [ apply Hf | apply Hh ]. 
     Qed.
 
     Lemma s_min_fun g : functional g -> functional (s_min g).
     Proof.
-      intros g_fun v x y [ Hx1 Hx2 ] [ Hy1 Hy2 ].
-      destruct (lt_eq_lt_dec x y) as [ [ H | ] | H ]; trivial.
-      apply Hy2 in H. destruct H as [ r H ]. discriminate (g_fun _ _ _ Hx1 H).
-      apply Hx2 in H. destruct H as [ r H ]. discriminate (g_fun _ _ _ Hy1 H).
+      intros Hg ? ? ?; apply minimizer_fun.
+      intros ? ? ?; apply Hg.
     Qed.
 
   End functional.
@@ -158,5 +149,74 @@ Section relational_semantics.
 End relational_semantics.
 
 Notation "[| f |]" := (@ra_rel _ f) (at level 0).
+
+Section recalg_coq.
+
+  Definition ra_coq k (f : recalg k) : forall v, ex ([|f|] v) -> sig ([|f|] v).
+  Proof.
+    induction f as [ n | | | k p | k i f gj IHf IHgj | k f g IHf IHg | k f IHf ]; intros v Hv.
+    exists n; reflexivity.
+    exists 0; reflexivity.
+    exists (S (vec_head v)); reflexivity.
+    exists (vec_pos v p); reflexivity.
+
+    assert (forall p, {y | [|vec_pos gj p|] v y }) as H'.
+      intros p; apply IHgj.
+      destruct Hv as (q & w & _ & Hw).
+      specialize (Hw p); rewrite vec_pos_set in Hw.
+      exists (vec_pos w p); trivial.
+    apply vec_reif_t in H'.
+    destruct H' as (w & Hw).
+    destruct (IHf w) as (x & Hx).
+    destruct Hv as (q & w' & Hw1 & Hw2).
+    assert (w = w') as Hw'.
+      apply vec_pos_ext.
+      intros p.
+      generalize (Hw p) (Hw2 p).
+      rewrite vec_pos_set.
+      apply ra_rel_fun.
+    subst w'.
+    exists q; trivial.
+    exists x, w; split; auto.
+    intros; rewrite vec_pos_set; auto.
+   
+    revert Hv; simpl; apply recursor_coq.
+    intros ? ?; apply ra_rel_fun.
+    apply IHf.
+    intros ? ? ? ?; apply ra_rel_fun.
+    intros ? ?; apply IHg.
+
+    revert Hv; simpl; apply minimizer_coq; auto.
+    intros ? ? ?; apply ra_rel_fun.
+  Defined.
+
+End recalg_coq.
+
+Section Coq_is_total.
+  
+  Variables (k : nat) (f : recalg k) (Hf : forall v, exists x, [|f|] v x).
+
+  Theorem Coq_is_total : { cf | forall v, [|f|] v (cf v) }.
+  Proof.
+    exists (fun v => proj1_sig (ra_coq _ _ (Hf v))).
+    intros v; apply (proj2_sig (ra_coq _ _ (Hf v))).
+  Qed.
+
+End Coq_is_total.
+
+Check ra_coq.
+Print Assumptions ra_coq.
+
+Check Coq_is_total.
+Print Assumptions Coq_is_total.
+
+Extraction "ra_coq.ml" ra_coq Coq_is_total.
+
+
+
+
+    
+     
+ 
 
 

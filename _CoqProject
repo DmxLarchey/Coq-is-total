@@ -20,3 +20,5 @@ tree.v
 finite.v
 cid.v
 applications.v
+minimizer.v
+recursor.v

@@ -666,16 +666,22 @@ Section vec_reif.
     intro; rewrite vec_pos_set; auto.
   Qed.
   
-  Definition vec_reif_t : (forall p, {x | R p x}) -> {v | forall p, R p (vec_pos v p) }.
-  Proof.
-    intros H.
-    apply pos_reif_t in H.
-    destruct H as (f & Hf).
-    exists (vec_set_pos f).
-    intro; rewrite vec_pos_set; auto.
-  Qed.
-  
 End vec_reif.
+
+Fixpoint vec_reif_t X n : forall R : pos n -> X -> Prop, (forall p, {x | R p x}) -> {v | forall p, R p (vec_pos v p) }.
+Proof.
+  refine (match n with 
+    | 0   => fun R _  => exist _ vec_nil _
+    | S n => fun R HR => match HR pos0 with
+      | exist _ x Hx => match vec_reif_t X n (fun p x => R (pos_nxt _ p) x) _ with
+        | exist _ v Hv => exist _ (x##v) _
+      end
+    end
+  end).
+  intros p; pos_inv p.
+  intros; apply HR.
+  intros p; pos_inv p; auto.
+Qed.
 
 Section pos_choice.
 

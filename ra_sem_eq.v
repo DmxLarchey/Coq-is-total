@@ -10,6 +10,7 @@
 Require Import Omega.
 
 Require Import utils recalg ra_rel ra_bs ra_ca.
+Require Import recursor minimizer.
 
 Set Implicit Arguments.
 
@@ -79,7 +80,7 @@ Section soundness_and_completeness.
     rewrite ra_rel_fix_rec; unfold s_rec.
     rewrite (vec_head_tail v); simpl; generalize (vec_head v) (vec_tail v).
     clear v; intros i v.
-    revert x; induction i as [ | i IHi ]; intros x; simpl s_rec_r.
+    revert x; induction i as [ | i IHi ]; intros x; simpl.
     intros H; apply Hf in H; destruct H as (n & Hn); exists (S n); constructor; auto.
     intros (y & H1 & H2).
     apply IHi in H1; destruct H1 as (n & Hn).

@@ -123,7 +123,8 @@ VFILES:=coq_is_total.v\
   cid.v\
   applications.v\
   minimizer.v\
-  recursor.v
+  recursor.v\
+  computable.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))

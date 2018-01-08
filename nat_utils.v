@@ -13,6 +13,41 @@ Require Import notations tac_utils list_utils.
 
 Set Implicit Arguments.
 
+Section nat_rev_ind.
+
+  (** A reverse recursion principle *)
+
+  Variables (P : nat -> Prop)
+            (HP : forall n, P (S n) -> P n).
+
+  Theorem nat_rev_ind x y : x <= y -> P y -> P x.
+  Proof. induction 1; auto. Qed.
+
+End nat_rev_ind.
+
+Section nat_rev_ind'.
+
+  (** A reverse recursion principle *)
+
+  Variables (P : nat -> Prop) (k : nat)
+            (HP : forall n, n < k -> P (S n) -> P n).
+
+  Theorem nat_rev_ind' x y : x <= y <= k -> P y -> P x.
+  Proof.
+    intros H1 H2. 
+    set (Q n := n <= k /\ P n).
+    assert (forall x y, x <= y -> Q y -> Q x) as H.
+      apply nat_rev_ind.
+      intros n (H3 & H4); split.
+      omega.
+      revert H4; apply HP, H3.
+    apply (H x y).
+    omega.
+    split; auto; omega.
+  Qed.
+
+End nat_rev_ind'.
+
 Section le_pirr.
 
   (* a dependent induction principle for le *)

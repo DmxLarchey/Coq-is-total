@@ -9,8 +9,7 @@
 
 Require Import Arith Omega.
 
-Require Import utils recalg.
-Require Import recursor minimizer.
+Require Import utils recalg computable.
 
 Set Implicit Arguments.
 
@@ -42,9 +41,9 @@ Section relational_semantics.
                                     and xn = x 
     **)
    
-    Definition s_rec f h v := recursor (f (vec_tail v)) (fun x y => h (x##y##vec_tail v)) (vec_head v).
+    Definition s_rec f h v := μ_rec (f (vec_tail v)) (fun x y => h (x##y##vec_tail v)) (vec_head v).
 
-    Definition s_min g v := minimizer (fun n => g (n##v)).
+    Definition s_min g v := μ_min (fun n => g (n##v)).
 
   End defs.
   
@@ -113,13 +112,13 @@ Section relational_semantics.
 
     Lemma s_rec_fun f h : functional f -> functional h -> functional (s_rec f h).
     Proof.
-      intros Hf Hh ? ? ? ?; unfold s_rec; apply recursor_fun; auto;
+      intros Hf Hh ? ? ? ?; apply μ_rec_fun; auto;
         intros ? ?; [ apply Hf | apply Hh ]. 
     Qed.
 
     Lemma s_min_fun g : functional g -> functional (s_min g).
     Proof.
-      intros Hg ? ? ?; apply minimizer_fun.
+      intros Hg ? ? ?; apply μ_min_fun.
       intros ? ? ?; apply Hg.
     Qed.
 
@@ -156,7 +155,7 @@ Section recalg_coq.
       This gives a VERY short proof of the totality of Coq !!!
    *)
 
-  Fixpoint ra_coq k (f : recalg k) : forall v, ex ([|f|] v) -> sig ([|f|] v).
+  Fixpoint recalg_computable k (f : recalg k) : forall v, computable ([|f|] v).
   Proof.
     destruct f as [ n | | | k p | k i f gj | k f g | k f ]; intros v Hv.
 
@@ -164,36 +163,34 @@ Section recalg_coq.
     exists 0; reflexivity.
     exists (S (vec_head v)); reflexivity.
     exists (vec_pos v p); reflexivity.
-
-    assert (forall p, exists y, [|vec_pos gj p|] v y) as H'.
+    
+    refine (match @vec_computable _ _ (fun f y => [|f|] v y) _ _ gj _ with
+      exist _ w Hw => match recalg_computable _ f w _ with
+        exist _ x Hx => exist _ x _
+      end 
+    end).
+    
+    intros ? ?; apply recalg_computable; trivial.
+    apply vec_reif with (R := fun p => [|vec_pos gj p|] v).
       intros p.
       destruct Hv as (q & w & _ & Hw).
       specialize (Hw p); rewrite vec_pos_set in Hw.
       exists (vec_pos w p); trivial.
-    refine (match vec_reif_t _ (fun p => ra_coq _ _ v (H' p)) with
-      exist _ w Hw => match ra_coq _ f w _ with
-        exist _ x Hx => exist _ x _
-      end 
-    end).
     destruct Hv as (q & w' & Hw1 & Hw2).
-    assert (w = w') as Hw'.
+      exists q; cutrewrite (w = w'); auto.
       apply vec_pos_ext.
-      intros p.
-      generalize (Hw p) (Hw2 p).
-      rewrite vec_pos_set.
-      apply ra_rel_fun.
-    subst w'.
-    exists q; trivial.
+      intros p; generalize (Hw p) (Hw2 p).
+      rewrite vec_pos_set; apply ra_rel_fun.
     exists w; split; auto.
-    intros; rewrite vec_pos_set; apply Hw.
-   
-    revert Hv; simpl; apply recursor_coq.
-    intros ? ?; apply ra_rel_fun.
-    apply ra_coq.
-    intros ? ? ? ?; apply ra_rel_fun.
-    intros ? ?; apply ra_coq.
+      intros; rewrite vec_pos_set; apply Hw.
 
-    revert Hv; simpl; apply minimizer_coq; auto.
+    revert Hv; simpl; apply rec_computable.
+    intros ? ?; apply ra_rel_fun.
+    apply recalg_computable.
+    intros ? ? ? ?; apply ra_rel_fun.
+    intros ? ?; apply recalg_computable.
+
+    revert Hv; simpl; apply min_computable; auto.
     intros ? ? ?; apply ra_rel_fun.
   Defined.
 
@@ -205,19 +202,19 @@ Section Coq_is_total.
 
   Theorem Coq_is_total : { cf | forall v, [|f|] v (cf v) }.
   Proof.
-    exists (fun v => proj1_sig (ra_coq _ _ (Hf v))).
-    intros v; apply (proj2_sig (ra_coq _ _ (Hf v))).
+    exists (fun v => proj1_sig (recalg_computable _ _ (Hf v))).
+    intros v; apply (proj2_sig (recalg_computable _ _ (Hf v))).
   Defined.
 
 End Coq_is_total.
 
-Check ra_coq.
-Print Assumptions ra_coq.
+Check recalg_computable.
+Print Assumptions recalg_computable.
 
 Check Coq_is_total.
 Print Assumptions Coq_is_total.
 
-Extraction "ra_coq.ml" ra_coq Coq_is_total.
+Extraction "ra_coq.ml" recalg_computable Coq_is_total.
 
 
     

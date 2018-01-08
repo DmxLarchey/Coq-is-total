@@ -22,3 +22,4 @@ cid.v
 applications.v
 minimizer.v
 recursor.v
+computable.v

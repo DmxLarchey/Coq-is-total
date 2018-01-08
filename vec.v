@@ -681,7 +681,7 @@ Proof.
   intros p; pos_inv p.
   intros; apply HR.
   intros p; pos_inv p; auto.
-Qed.
+Defined.
 
 Section pos_choice.
 

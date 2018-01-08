@@ -60,6 +60,31 @@ Section Recursive_algorithms.
 
   Definition recalg_rec (P : forall k, recalg k -> Set) := recalg_rect P.
   Definition recalg_ind (P : forall k, recalg k -> Prop) := recalg_rect P.
+
+  Section recalg_rec_type.
+
+    Variables (X : Type) (P : nat -> Type).
+    Hypothesis Pcst  : P 0.
+    Hypothesis Pzero : P 1.
+    Hypothesis Psucc : P 1.
+    Hypothesis Pproj : forall k (p : pos k), P k.
+    Hypothesis Pcomp : forall k i, P k -> vec (P i) k -> P i. 
+    Hypothesis Prec  : forall k, P k -> P (S (S k)) -> P (S k).
+    Hypothesis Pmin  : forall k, P (S k) -> P k.
+
+    Fixpoint recalg_rec_type k (f : recalg k) { struct f } : P k :=
+      match f in recalg i return P i with
+        | ra_cst n     => Pcst
+        | ra_zero      => Pzero
+        | ra_succ      => Psucc
+        | ra_proj p    => Pproj p 
+        | ra_comp f gj => Pcomp [|f|] (vec_map (@recalg_rec_type _) gj)
+        | ra_rec f g   => Prec [|f|] [|g|]
+        | ra_min f     => Pmin [|f|]
+      end
+    where "[| f |]" := (@recalg_rec_type _ f).
+
+  End recalg_rec_type.
   
   Section recalg_inj.
  

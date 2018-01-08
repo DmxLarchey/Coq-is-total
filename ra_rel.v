@@ -18,7 +18,7 @@ Section relational_semantics.
 
   (* Recursive functions can be interpreted in Coq as (functional) relations *)
 
-  Let natfun k := (vec nat k -> nat -> Prop).
+  Notation natfun := (fun k => vec nat k -> nat -> Prop).
 
   Section defs.
 
@@ -41,14 +41,6 @@ Section relational_semantics.
                                         h (.##..##v) xn, 
                                     and xn = x 
     **)
-
-(*
-    Fixpoint s_rec_r f h n v x := 
-      match n with
-        | 0   => f v x
-        | S n => exists y, s_rec_r f h n v y /\ h (n##y##v) x
-      end.
-*)
    
     Definition s_rec f h v := recursor (f (vec_tail v)) (fun x y => h (x##y##vec_tail v)) (vec_head v).
 
@@ -152,22 +144,37 @@ Notation "[| f |]" := (@ra_rel _ f) (at level 0).
 
 Section recalg_coq.
 
-  Definition ra_coq k (f : recalg k) : forall v, ex ([|f|] v) -> sig ([|f|] v).
+  (** This code compute the μ-recursive algorithm f into
+      Coq code that mimics the algorithm f 
+
+      It needs a termination certificate in the form 
+      of a proof that the predicate [|f|] v is inhabited
+
+      Notice: refine is used to allow better extraction
+        to OCaml code
+
+      This gives a VERY short proof of the totality of Coq !!!
+   *)
+
+  Fixpoint ra_coq k (f : recalg k) : forall v, ex ([|f|] v) -> sig ([|f|] v).
   Proof.
-    induction f as [ n | | | k p | k i f gj IHf IHgj | k f g IHf IHg | k f IHf ]; intros v Hv.
+    destruct f as [ n | | | k p | k i f gj | k f g | k f ]; intros v Hv.
+
     exists n; reflexivity.
     exists 0; reflexivity.
     exists (S (vec_head v)); reflexivity.
     exists (vec_pos v p); reflexivity.
 
-    assert (forall p, {y | [|vec_pos gj p|] v y }) as H'.
-      intros p; apply IHgj.
+    assert (forall p, exists y, [|vec_pos gj p|] v y) as H'.
+      intros p.
       destruct Hv as (q & w & _ & Hw).
       specialize (Hw p); rewrite vec_pos_set in Hw.
       exists (vec_pos w p); trivial.
-    apply vec_reif_t in H'.
-    destruct H' as (w & Hw).
-    destruct (IHf w) as (x & Hx).
+    refine (match vec_reif_t _ (fun p => ra_coq _ _ v (H' p)) with
+      exist _ w Hw => match ra_coq _ f w _ with
+        exist _ x Hx => exist _ x _
+      end 
+    end).
     destruct Hv as (q & w' & Hw1 & Hw2).
     assert (w = w') as Hw'.
       apply vec_pos_ext.
@@ -177,14 +184,14 @@ Section recalg_coq.
       apply ra_rel_fun.
     subst w'.
     exists q; trivial.
-    exists x, w; split; auto.
-    intros; rewrite vec_pos_set; auto.
+    exists w; split; auto.
+    intros; rewrite vec_pos_set; apply Hw.
    
     revert Hv; simpl; apply recursor_coq.
     intros ? ?; apply ra_rel_fun.
-    apply IHf.
+    apply ra_coq.
     intros ? ? ? ?; apply ra_rel_fun.
-    intros ? ?; apply IHg.
+    intros ? ?; apply ra_coq.
 
     revert Hv; simpl; apply minimizer_coq; auto.
     intros ? ? ?; apply ra_rel_fun.
@@ -200,7 +207,7 @@ Section Coq_is_total.
   Proof.
     exists (fun v => proj1_sig (ra_coq _ _ (Hf v))).
     intros v; apply (proj2_sig (ra_coq _ _ (Hf v))).
-  Qed.
+  Defined.
 
 End Coq_is_total.
 
@@ -211,8 +218,6 @@ Check Coq_is_total.
 Print Assumptions Coq_is_total.
 
 Extraction "ra_coq.ml" ra_coq Coq_is_total.
-
-
 
 
     

@@ -62,25 +62,11 @@ Section minimizer.
       [ generalize (Rfun H1 Hu) | generalize (Rfun H3 Hu) ]; discriminate.
   Qed. 
 
-  Hypothesis Hmin : ex minimizer.
-
   Inductive bar n : Prop :=
     | in_bar_0 : R n 0 -> bar n
     | in_bar_1 : (exists u, R n (S u)) -> bar (S n) -> bar n.
 
-  Fact bar_0 : bar 0.
-  Proof.
-    destruct Hmin as (k & H1 & H2).
-    apply in_bar_0 in H1.
-    clear Hmin HR.
-    revert H1.
-    apply nat_rev_ind' with (k := k).
-    intros i H3.
-    apply in_bar_1, H2; trivial.
-    omega.
-  Qed.
-
-  Fact bar_ex n : bar n -> ex (R n).
+  Let bar_ex n : bar n -> ex (R n).
   Proof.
     induction 1 as [ n Hn | n (k & Hk) _ _ ].
     exists 0; auto.
@@ -103,6 +89,20 @@ Section minimizer.
       destruct (eq_nat_dec i n).
       - subst; exists v; trivial.
       - apply H2; omega.
+  Qed.
+
+  Hypothesis Hmin : ex minimizer.
+
+  Let bar_0 : bar 0.
+  Proof.
+    destruct Hmin as (k & H1 & H2).
+    apply in_bar_0 in H1.
+    clear Hmin HR.
+    revert H1.
+    apply nat_rev_ind' with (k := k).
+    intros i H3.
+    apply in_bar_1, H2; trivial.
+    omega.
   Qed.
 
   Definition minimizer_coq : sig minimizer.

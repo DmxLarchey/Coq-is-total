@@ -156,7 +156,7 @@ Section recalg_coq.
       This gives a VERY short proof of the totality of Coq !!!
    *)
 
-  Fixpoint recalg_computable k (ra : recalg k) : forall v, computable ([|ra|] v).
+  Fixpoint ra_compute k (ra : recalg k) : forall v, computable ([|ra|] v).
   Proof.
     destruct ra as [ n | | | k p | k i f gj | k f g | k f ]; intros v Hv.
 
@@ -165,13 +165,13 @@ Section recalg_coq.
     exists (S (vec_head v)); reflexivity.
     exists (vec_pos v p); reflexivity.
     
-    refine (match @vec_computable _ _ (fun f y => [|f|] v y) _ _ gj _ with
-      exist _ w Hw => match recalg_computable _ f w _ with
-        exist _ x Hx => exist _ x _
+    refine (match @vec_compute _ _ (fun f y => [|f|] v y) 
+                                   (fun p => match p with exist _ w Hw => ra_compute _ _ v _ end) 
+                                   _ gj _ with
+      | exist _ w Hw => match ra_compute _ f w _ with
+        | exist _ x Hx => exist _ x _
       end 
-    end).
-    
-    intros (w & Hw); apply recalg_computable; trivial.
+    end); trivial.
     apply vec_reif with (R := fun p => [|vec_pos gj p|] v).
       intros p.
       destruct Hv as (q & w & _ & Hw).
@@ -185,16 +185,16 @@ Section recalg_coq.
     exists w; split; auto.
       intros; rewrite vec_pos_set; apply Hw.
 
-    revert Hv; simpl; apply rec_computable.
+    revert Hv; simpl; apply rec_compute.
     intros ? ?; apply ra_rel_fun.
     intros (w & Hw); simpl.
-    apply recalg_computable; trivial.
+    apply ra_compute; trivial.
     intros ? ? ? ?; apply ra_rel_fun.
-    intros ? ? (w & Hw); apply recalg_computable; simpl; auto.
+    intros ? ? (w & Hw); apply ra_compute; simpl; auto.
 
-    revert Hv; simpl; apply min_computable; auto.
+    revert Hv; simpl; apply min_compute; auto.
     intros ? ? ?; apply ra_rel_fun.
-    intros (w & Hw); apply recalg_computable; trivial.
+    intros (w & Hw); apply ra_compute; trivial.
   Defined.
 
 End recalg_coq.
@@ -205,19 +205,25 @@ Section Coq_is_total.
 
   Theorem Coq_is_total : { cf | forall v, [|f|] v (cf v) }.
   Proof.
-    exists (fun v => proj1_sig (recalg_computable _ _ (Hf v))).
-    intros v; apply (proj2_sig (recalg_computable _ _ (Hf v))).
+    exists (fun v => proj1_sig (ra_compute _ _ (Hf v))).
+    intros v; apply (proj2_sig (ra_compute _ _ (Hf v))).
   Defined.
 
 End Coq_is_total.
 
-Check recalg_computable.
-Print Assumptions recalg_computable.
+Check ra_compute.
+Print Assumptions ra_compute.
+
+Print ra_compute.
 
 Check Coq_is_total.
 Print Assumptions Coq_is_total.
 
-Extraction "ra_coq.ml" recalg_computable Coq_is_total.
+Print ra_compute.
+
+Extraction ra_compute.
+
+Extraction "ra_coq.ml" ra_compute Coq_is_total.
 
 
     

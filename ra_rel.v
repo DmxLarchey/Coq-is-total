@@ -41,7 +41,7 @@ Section relational_semantics.
                                     and xn = x 
     **)
    
-    Definition s_rec f h v := μ_rec (f (vec_tail v)) (fun x y => h (x##y##vec_tail v)) (vec_head v).
+    Definition s_rec f h v := μ_rec f (fun v x y => h (x##y##v)) (vec_tail v) (vec_head v).
 
     Definition s_min g v := μ_min (fun n => g (n##v)).
 
@@ -112,8 +112,9 @@ Section relational_semantics.
 
     Lemma s_rec_fun f h : functional f -> functional h -> functional (s_rec f h).
     Proof.
-      intros Hf Hh ? ? ? ?; apply μ_rec_fun; auto;
-        intros ? ?; [ apply Hf | apply Hh ]. 
+      intros Hf Hh ? ? ?. 
+      apply μ_rec_fun; auto.
+      intros ? ? ? ? ?; apply Hh.
     Qed.
 
     Lemma s_min_fun g : functional g -> functional (s_min g).
@@ -155,9 +156,9 @@ Section recalg_coq.
       This gives a VERY short proof of the totality of Coq !!!
    *)
 
-  Fixpoint recalg_computable k (f : recalg k) : forall v, computable ([|f|] v).
+  Fixpoint recalg_computable k (ra : recalg k) : forall v, computable ([|ra|] v).
   Proof.
-    destruct f as [ n | | | k p | k i f gj | k f g | k f ]; intros v Hv.
+    destruct ra as [ n | | | k p | k i f gj | k f g | k f ]; intros v Hv.
 
     exists n; reflexivity.
     exists 0; reflexivity.
@@ -170,7 +171,7 @@ Section recalg_coq.
       end 
     end).
     
-    intros ? ?; apply recalg_computable; trivial.
+    intros (w & Hw); apply recalg_computable; trivial.
     apply vec_reif with (R := fun p => [|vec_pos gj p|] v).
       intros p.
       destruct Hv as (q & w & _ & Hw).
@@ -186,12 +187,14 @@ Section recalg_coq.
 
     revert Hv; simpl; apply rec_computable.
     intros ? ?; apply ra_rel_fun.
-    apply recalg_computable.
+    intros (w & Hw); simpl.
+    apply recalg_computable; trivial.
     intros ? ? ? ?; apply ra_rel_fun.
-    intros ? ?; apply recalg_computable.
+    intros ? ? (w & Hw); apply recalg_computable; simpl; auto.
 
     revert Hv; simpl; apply min_computable; auto.
     intros ? ? ?; apply ra_rel_fun.
+    intros (w & Hw); apply recalg_computable; trivial.
   Defined.
 
 End recalg_coq.

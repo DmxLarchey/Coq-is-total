@@ -21,74 +21,85 @@ Section vec_computable.
 
   (** Any computable relation can be lifted on vectors *)
    
-  Variable (X Y : Type) (R : X -> Y -> Prop) (HR : forall x, computable (R x)).
+  Variable (X Y : Type) (R : X -> Y -> Prop) (HR : forall (p : { x | ex (R x) }), { y | R (proj1_sig p) y }).
      
   Definition vec_computable : forall k v, computable (fun w => forall p : pos k, R (vec_pos v p) (vec_pos w p)).
   Proof.
-    refine (fix loop k v := match v with 
+    refine (fix loop k v { struct v } := match v with 
       | vec_nil           => fun _ => exist _ vec_nil _
-      | @vec_cons _ k x v => fun H => 
-         match @HR x _, @loop _ v _ with
-           | exist _ y Hy, exist _ w Hw => exist _ (y##w) _
-         end
+      | @vec_cons _ k x v => fun H => _
      end).
-     * intro p; pos_inv p.
-     * destruct H as (w & Hw).
+     intro p; pos_inv p.
+     assert (ex (R x)) as Hx.
+       destruct H as (w & Hw).
        exists (vec_pos w pos0); apply (Hw pos0).
+     refine (match @HR (exist _ x Hx), @loop k v _ with
+           | exist _ y Hy, exist _ w Hw => exist _ (y##w) _
+         end).
      * destruct H as (w & Hw).
        exists (vec_tail w).
        intros p; rewrite vec_pos_tail; apply (Hw (pos_nxt _ p)).
-     * intros p; pos_inv p; simpl; auto.
+     * simpl in Hy. intros p; pos_inv p; simpl; auto.
   Defined.
 
 End vec_computable.
 
 Section rec_computable.
 
-  Variables (F : nat -> Prop) 
-            (Ffun : forall n m, F n -> F m -> n = m) 
-            (HF : computable F)
-            (G : nat -> nat -> nat -> Prop) 
-            (Gfun : forall x y n m, G x y n -> G x y m -> n = m)
-            (HG : forall x y, computable (G x y)).
+  Variables (V : Type)
+            (F : V -> nat -> Prop) 
+            (Ffun : forall v n m, F v n -> F v m -> n = m)
+            (HF : forall p : { v | ex (F v) }, { n | F (proj1_sig p) n })
+         (*   (HF : forall v, computable (F v)) *)
+            (G : V -> nat -> nat -> nat -> Prop) 
+            (Gfun : forall v x y n m, G v x y n -> G v x y m -> n = m)
+            (HG : forall x y (p : { v | ex (G v x y) }), { n | G (proj1_sig p) x y n})
+         (* (HG : forall v x y, computable (G v x y)) *).
   
-  Fixpoint μ_rec n := 
+  Fixpoint μ_rec v n := 
     match n with
-      | 0   => F
-      | S n => fun x => exists y, μ_rec n y /\ G n y x
+      | 0   => F v
+      | S n => fun x => exists y, μ_rec v n y /\ G v n y x
       end.
 
-  Fact μ_rec_fun : functional μ_rec. 
+  Fact μ_rec_fun v : functional (μ_rec v). 
   Proof.
     intros n; induction n as [ | n IHn ]; simpl; auto.
+    apply Ffun.
     intros x y (a & H1 & H2) (b & H3 & H4).
     specialize (IHn _ _ H1 H3); subst b.
     revert H2 H4; apply Gfun.
   Qed.
 
-  Fixpoint rec_computable n (Hn : ex (μ_rec n)) : sig (μ_rec n).
+  Fixpoint rec_computable v n (Hn : ex (μ_rec v n)) : sig (μ_rec v n).
   Proof.
     destruct n as [ | n ].
-    apply HF, Hn.
-    refine (match rec_computable n _ with
-        | exist _ xn Hxn => match @HG n xn _ with 
-          | exist _ xSn HxSn => exist _ xSn _
-        end
+    destruct (HF (exist _ v Hn)) as (n & H).
+    exists n; auto.
+    refine (match rec_computable v n _ with
+        | exist _ xn Hxn => _
       end).
-    * destruct Hn as (_ & y & ? & _); exists y; auto.
-    * destruct Hn as (x & y & H1 & H2).
-      exists x; revert H2; eqgoal; do 2 f_equal.
+    destruct Hn as (_ & y & ? & _); exists y; auto.
+    assert (ex (G v n xn)) as H.
+      destruct Hn as (y & xn' & H1 & H2).
+      exists y; revert H2; eqgoal; f_equal.
       revert Hxn H1; apply μ_rec_fun.
-    * exists xn; auto.
+    refine(match @HG n xn (exist _ v H) with 
+          | exist _ xSn HxSn => exist _ xSn _
+        end).
+    destruct Hn as (x & y & H1 & H2).
+    simpl in HxSn.
+    exists xn; auto.
   Defined.
 
 End rec_computable.
 
 Section min_computable.
 
-  Variable (R : nat -> nat -> Prop)
+  Variable 
+           (R : nat -> nat -> Prop)
            (Rfun : forall n u v, R n u -> R n v -> u = v)
-           (HR : forall n, computable (R n)).
+           (HR : forall (p : { n | ex (R n)}), { m | R (proj1_sig p) m }).
 
   Definition μ_min n := R n 0 /\ forall i, i < n -> exists u, R i (S u).
 
@@ -113,7 +124,7 @@ Section min_computable.
 
   Let loop : forall n, bar n -> { k | R k 0 /\ forall i, n <= i < k -> exists u, R i (S u) }.
   Proof.
-    refine (fix loop n Hn { struct Hn } := match HR (bar_ex Hn) with
+    refine (fix loop n Hn { struct Hn } := match HR (exist _ n (bar_ex Hn)) with
         | exist _ u Hu => match u as m return R _ m -> _ with
             | 0   => fun H => exist _ n _
             | S v => fun H => match loop (S n) _ with

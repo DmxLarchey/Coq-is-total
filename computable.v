@@ -70,29 +70,33 @@ Section rec_computable.
     revert H2 H4; apply Gfun.
   Qed.
   
-  Let loop : forall n, computable (μ_rec n).
+  Let loop : forall n, ex (μ_rec n) -> { m | μ_rec n m }.
   Proof.
-    refine (fix loop n : ex (μ_rec n) -> sig (μ_rec n) := 
+    refine (fix loop n : ex (μ_rec n) -> { m | μ_rec n m } := 
       match n with 
-        | 0   => fun Hn => HF (exist _ v Hn)
+        | 0   => fun Hn => match HF (exist _ v Hn) with exist _ m Hm => exist _ m _ end
         | S n => fun Hn => match loop n _ with 
           | exist _ xn Hxn => match @HG n xn (exist _ v _) with 
              | exist _ xSn HxSn => exist _ xSn _
         end end
     end).
+    * auto.
     * destruct Hn as (_ & y & ? & _); exists y; auto.
-    * exists xn; auto.
+    * simpl in HxSn, Hxn; auto; exists xn; tauto.
     
     Unshelve.
     
     destruct Hn as (y & xn' & H1 & H2).
     exists y; revert H2; eqgoal; f_equal.
-    revert Hxn H1; apply μ_rec_fun.
+    generalize Hxn H1; apply μ_rec_fun.
   Qed.
 
-  Definition rec_compute n : computable (μ_rec n) := loop n.
+  Definition rec_compute n : computable (μ_rec n). 
+  Proof. exact (loop n). Defined. 
  
 End rec_computable.
+
+Extraction rec_compute.
 
 Section min_computable.
 
